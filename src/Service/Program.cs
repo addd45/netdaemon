@@ -6,61 +6,91 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using Serilog.Sinks.SystemConsole.Themes;
 
 namespace Service
 {
     internal class Program
     {
         // private const string _hassioConfigPath = "/root/src/src/Service/.config/hassio_config.json";
-        private const string _hassioConfigPath = "data/options.json";
-        private static LogLevel LogLevel = LogLevel.Trace;
+        private const string _hassioConfigPath = "/data/options.json";
+
+        // Logging switch
+        private static LoggingLevelSwitch _levelSwitch = new LoggingLevelSwitch();
 
         public static async Task Main(string[] args)
         {
             try
             {
-                ///
+                // Setup serilog
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                    .Enrich.FromLogContext()
+                    .MinimumLevel.ControlledBy(_levelSwitch)
+                    .WriteTo.Console(theme: AnsiConsoleTheme.Code)
+                    .CreateLogger();
+
                 if (File.Exists(_hassioConfigPath))
                 {
-                    var hassAddOnSettings = await JsonSerializer.DeserializeAsync<HassioConfig>(
-                                                        File.OpenRead(_hassioConfigPath)).ConfigureAwait(false);
-                    if (hassAddOnSettings.LogLevel is object)
+                    try
                     {
-                        Program.LogLevel = hassAddOnSettings.LogLevel switch
+                        var hassAddOnSettings = await JsonSerializer.DeserializeAsync<HassioConfig>(
+                                                      File.OpenRead(_hassioConfigPath)).ConfigureAwait(false);
+                        if (hassAddOnSettings.LogLevel is object)
                         {
-                            "info" => LogLevel.Information,
-                            "debug" => LogLevel.Debug,
-                            "error" => LogLevel.Error,
-                            "warning" => LogLevel.Warning,
-                            "trace" => LogLevel.Trace,
-                            _ => LogLevel.Information
-                        };
+                            _levelSwitch.MinimumLevel = hassAddOnSettings.LogLevel switch
+                            {
+                                "info" => LogEventLevel.Information,
+                                "debug" => LogEventLevel.Debug,
+                                "error" => LogEventLevel.Error,
+                                "warning" => LogEventLevel.Warning,
+                                "trace" => LogEventLevel.Verbose,
+                                _ => LogEventLevel.Information
+                            };
+                        }
+                        if (hassAddOnSettings.GenerateEntitiesOnStart is object)
+                        {
+                            Environment.SetEnvironmentVariable("HASS_GEN_ENTITIES", hassAddOnSettings.GenerateEntitiesOnStart.ToString());
+                        }
                     }
-                    if (hassAddOnSettings.GenerateEntitiesOnStart is object)
+                    catch (System.Exception e)
                     {
-                        Environment.SetEnvironmentVariable("HASS_GEN_ENTITIES", hassAddOnSettings.GenerateEntitiesOnStart.ToString());
+                        Log.Fatal(e, "Failed to read the Home Assistant Add-on config");
                     }
                 }
-            }
-            catch (Exception)
-            {
-                System.Console.WriteLine("Home assistant add-on config not valid json, ending add-on...");
-                return;
-            }
+                else
+                {
+                    var envLogLevel = Environment.GetEnvironmentVariable("HASS_LOG_LEVEL");
+                    _levelSwitch.MinimumLevel = envLogLevel switch
+                    {
+                        "info" => LogEventLevel.Information,
+                        "debug" => LogEventLevel.Debug,
+                        "error" => LogEventLevel.Error,
+                        "warning" => LogEventLevel.Warning,
+                        "trace" => LogEventLevel.Verbose,
+                        _ => LogEventLevel.Information
+                    };
+                }
 
-            CreateHostBuilder(args).Build().Run();
+                CreateHostBuilder(args).Build().Run();
+            }
+            catch (Exception e)
+            {
+                Log.Fatal(e, "Failed to start host...");
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                .ConfigureServices(services => { services.AddHostedService<RunnerService>(); })
-                .ConfigureLogging(logging =>
-                {
-                    logging.ClearProviders();
-                    logging.AddConsole(options => options.IncludeScopes = false);
-                    logging.AddDebug();
-                    logging.AddFilter("Microsoft", LogLevel.Error);
-                    logging.SetMinimumLevel(Program.LogLevel);
-                });
+                .UseSerilog()
+                .ConfigureServices(services => { services.AddHostedService<RunnerService>(); });
+
     }
 }

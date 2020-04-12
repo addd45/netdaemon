@@ -36,7 +36,7 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
             if (_daemonHost == null)
                 return;
 
-            _logger.LogInformation("Stopping netdaemon...");
+            _logger.LogInformation("Stopping NetDaemon...");
             await _daemonHost.Stop().ConfigureAwait(false);
 
             await Task.WhenAny(_daemonHost.Stop(), Task.Delay(1000, cancellationToken)).ConfigureAwait(false);
@@ -46,13 +46,14 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
         {
             try
             {
-                _logger.LogInformation($"Starting netdaemon (version {_version})...");
+                _logger.LogInformation($"Starting NeDaemon (version {_version})...");
 
                 var config = await ReadConfigAsync();
 
                 if (config == null)
                 {
                     _logger.LogError("No config specified, file or environment variables! Exiting...");
+
                     return;
                 }
 
@@ -109,6 +110,10 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
                                         await daemonHostTask.ConfigureAwait(false);
                                     }
                                 }
+                                catch (TaskCanceledException)
+                                {
+                                    _logger.LogInformation("Canceling NetDaemon service...");
+                                }
                                 catch (Exception e)
                                 {
                                     _logger.LogError(e, "Failed to load applications");
@@ -116,7 +121,7 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
                             }
                             else
                             {
-                                _logger.LogWarning("Home assistant still unavailable, retrying in 30 seconds...");
+                                _logger.LogWarning("Home Assistant Core still unavailable, retrying in 40 seconds...");
                             }
                         }
                     }
@@ -124,13 +129,13 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
                     {
                         if (!stoppingToken.IsCancellationRequested)
                         {
-                            _logger.LogWarning("Home assistant disconnected!, retrying in 30 seconds...");
+                            _logger.LogWarning("Home Assistant Core disconnected!, retrying in 40 seconds...");
                         }
                     }
 
                     if (!stoppingToken.IsCancellationRequested)
                         // The service is still running, we have error in connection to hass
-                        await Task.Delay(30000, stoppingToken).ConfigureAwait(false); // Wait 5 seconds
+                        await Task.Delay(40000, stoppingToken).ConfigureAwait(false); // Wait 5 seconds
                 }
             }
             catch (OperationCanceledException)
@@ -138,10 +143,10 @@ namespace JoySoftware.HomeAssistant.NetDaemon.DaemonRunner.Service
             } // Normal exit
             catch (Exception e)
             {
-                _logger.LogError(e, "NetDaemon had unhandled exception, closing..");
+                _logger.LogError(e, "NetDaemon had unhandled exception, closing...");
             }
 
-            _logger.LogInformation("End netdaemon..");
+            _logger.LogInformation("Netdaemon exited!");
         }
 
         private async Task<HostConfig?> ReadConfigAsync()

@@ -15,7 +15,7 @@ namespace JoySoftware.HomeAssistant.NetDaemon.Common
     /// <summary>
     ///     Base class för all NetDaemon apps
     /// </summary>
-    public class NetDaemonApp : INetDaemonApp, INetDaemon
+    public class NetDaemonApp : INetDaemonApp, INetDaemonBase
     {
         private INetDaemon? _daemon;
 
@@ -68,33 +68,33 @@ namespace JoySoftware.HomeAssistant.NetDaemon.Common
         public IEntity Entities(Func<IEntityProperties, bool> func)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Entities(func);
+            return _daemon!.Entities(this, func);
         }
 
         /// <inheritdoc/>
         public IEntity Entities(IEnumerable<string> entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Entities(entityIds);
+            return _daemon!.Entities(this, entityIds);
         }
 
         /// <inheritdoc/>
         public IEntity Entity(params string[] entityId)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Entity(entityId);
+            return _daemon!.Entity(this, entityId);
         }
 
         /// <inheritdoc/>
-        public IFluentEvent Event(params string[] eventParams) => _daemon?.Event(eventParams) ??
+        public IFluentEvent Event(params string[] eventParams) => _daemon?.Event(this, eventParams) ??
             throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
 
         /// <inheritdoc/>
-        public IFluentEvent Events(Func<FluentEventProperty, bool> func) => _daemon?.Events(func) ??
+        public IFluentEvent Events(Func<FluentEventProperty, bool> func) => _daemon?.Events(this, func) ??
             throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
 
         /// <inheritdoc/>
-        public IFluentEvent Events(IEnumerable<string> eventParams) => _daemon?.Events(eventParams) ??
+        public IFluentEvent Events(IEnumerable<string> eventParams) => _daemon?.Events(this, eventParams) ??
             throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
 
         /// <inheritdoc/>
@@ -147,58 +147,137 @@ namespace JoySoftware.HomeAssistant.NetDaemon.Common
         }
 
         /// <inheritdoc/>
-        public void Log(string message, LogLevel level = LogLevel.Information) => Logger.Log(level, message);
+        public void Log(string message) => Log(LogLevel.Information, message);
 
         /// <inheritdoc/>
-        public void Log(string message, Exception exception, LogLevel level = LogLevel.Information) => Logger.Log(level, exception, message);
+        public void LogWarning(string message) => Log(LogLevel.Warning, message);
+
+        /// <inheritdoc/>
+        public void LogError(string message) => Log(LogLevel.Error, message);
+
+        /// <inheritdoc/>
+        public void LogTrace(string message) => Log(LogLevel.Trace, message);
+
+        /// <inheritdoc/>
+        public void LogDebug(string message) => Log(LogLevel.Debug, message);
+
+        /// <inheritdoc/>
+        public void Log(Exception exception, string message) => Log(LogLevel.Information, exception, message);
+        /// <inheritdoc/>
+        public void LogWarning(Exception exception, string message) => Log(LogLevel.Warning, exception, message);
+        /// <inheritdoc/>
+        public void LogError(Exception exception, string message) => Log(LogLevel.Error, exception, message);
+        /// <inheritdoc/>
+        public void LogDebug(Exception exception, string message) => Log(LogLevel.Debug, exception, message);
+        /// <inheritdoc/>
+        public void LogTrace(Exception exception, string message) => Log(LogLevel.Trace, exception, message);
+
+        /// <inheritdoc/>
+        public void Log(LogLevel level, string message, params object[] param)
+        {
+            if (param is object && param.Length > 0)
+            {
+                var result = param.Prepend(Id).ToArray();
+                Logger.Log(level, $"  {{Id}}: {message}", result);
+            }
+            else
+            {
+                Logger.Log(level, $"  {{Id}}: {message}", new object[] { Id ?? "" });
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Log(string message, params object[] param) => Log(LogLevel.Information, message, param);
+
+        /// <inheritdoc/>
+        public void LogWarning(string message, params object[] param) => Log(LogLevel.Warning, message, param);
+
+        /// <inheritdoc/>
+        public void LogError(string message, params object[] param) => Log(LogLevel.Error, message, param);
+
+        /// <inheritdoc/>
+        public void LogDebug(string message, params object[] param) => Log(LogLevel.Debug, message, param);
+
+        /// <inheritdoc/>
+        public void LogTrace(string message, params object[] param) => Log(LogLevel.Trace, message, param);
+
+
+        /// <inheritdoc/>
+        public void Log(LogLevel level, Exception exception, string message, params object[] param)
+        {
+            if (param is object && param.Length > 0)
+            {
+                var result = param.Prepend(Id).ToArray();
+                Logger.Log(level, exception, $"  {{Id}}: {message}", result);
+            }
+            else
+            {
+                Logger.Log(level, exception, $"  {{Id}}: {message}", new object[] { Id ?? "" });
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Log(Exception exception, string message, params object[] param) => Log(LogLevel.Information, exception, message, param);
+
+        /// <inheritdoc/>
+        public void LogWarning(Exception exception, string message, params object[] param) => Log(LogLevel.Warning, exception, message, param);
+
+        /// <inheritdoc/>
+        public void LogError(Exception exception, string message, params object[] param) => Log(LogLevel.Error, exception, message, param);
+
+        /// <inheritdoc/>
+        public void LogDebug(Exception exception, string message, params object[] param) => Log(LogLevel.Debug, exception, message, param);
+
+        /// <inheritdoc/>
+        public void LogTrace(Exception exception, string message, params object[] param) => Log(LogLevel.Trace, exception, message, param);
 
         /// <inheritdoc/>
         public IMediaPlayer MediaPlayer(params string[] entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.MediaPlayer(entityIds);
+            return _daemon!.MediaPlayer(this, entityIds);
         }
 
         /// <inheritdoc/>
         public IMediaPlayer MediaPlayers(IEnumerable<string> entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.MediaPlayers(entityIds);
+            return _daemon!.MediaPlayers(this, entityIds);
         }
 
         /// <inheritdoc/>
         public IMediaPlayer MediaPlayers(Func<IEntityProperties, bool> func)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.MediaPlayers(func);
+            return _daemon!.MediaPlayers(this, func);
         }
 
         /// <inheritdoc/>
         public ICamera Camera(params string[] entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Camera(entityIds);
+            return _daemon!.Camera(this, entityIds);
         }
 
         /// <inheritdoc/>
         public ICamera Cameras(IEnumerable<string> entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Cameras(entityIds);
+            return _daemon!.Cameras(this, entityIds);
         }
 
         /// <inheritdoc/>
         public ICamera Cameras(Func<IEntityProperties, bool> func)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.Cameras(func);
+            return _daemon!.Cameras(this, func);
         }
 
         /// <inheritdoc/>
         public IScript RunScript(params string[] entityIds)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.RunScript(entityIds);
+            return _daemon!.RunScript(this, entityIds);
         }
 
         /// <inheritdoc/>
@@ -324,21 +403,21 @@ namespace JoySoftware.HomeAssistant.NetDaemon.Common
         public IFluentInputSelect InputSelect(params string[] inputSelectParams)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.InputSelect(inputSelectParams);
+            return _daemon!.InputSelect(this, inputSelectParams);
         }
 
         /// <inheritdoc/>
         public IFluentInputSelect InputSelects(IEnumerable<string> inputSelectParams)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.InputSelects(inputSelectParams);
+            return _daemon!.InputSelects(this, inputSelectParams);
         }
 
         /// <inheritdoc/>
         public IFluentInputSelect InputSelects(Func<IEntityProperties, bool> func)
         {
             _ = _daemon as INetDaemon ?? throw new NullReferenceException($"{nameof(_daemon)} cant be null!");
-            return _daemon!.InputSelects(func);
+            return _daemon!.InputSelects(this, func);
         }
 
         /// <inheritdoc/>
